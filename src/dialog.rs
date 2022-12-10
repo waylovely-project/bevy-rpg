@@ -2,7 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use bevy::prelude::*;
 
-use crate::characters::{Character, MultipleCharacters, PossibleCharacter, SingleCharacter};
+use crate::characters::{
+    Character, CharacterName, MultipleCharacters, PossibleCharacter, SingleCharacter,
+};
 
 #[derive(Clone)]
 pub struct TextDialog {
@@ -31,7 +33,7 @@ pub enum Dialog {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct WriteDialog {}
-pub struct DialogIncomingEvent(Dialog);
+pub struct DialogIncomingEvent(pub Dialog);
 impl Dialog {
     pub fn start(dialogs: Dialogs, mut dialog_event: EventWriter<DialogIncomingEvent>) {
         for dialog in dialogs.0 {
@@ -160,5 +162,11 @@ impl<A: Into<TextWrapper>, B: IntoIterator<Item = A>> From<(B, ChooseDialogSetti
 {
     fn from(input: (B, ChooseDialogSettings<A>)) -> Self {
         Dialog::Choose(input.into())
+    }
+}
+
+impl CharacterName for TextDialog {
+    fn charname(&self) -> Option<Text> {
+        self.char.charname()
     }
 }
