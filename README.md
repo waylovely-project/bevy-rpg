@@ -6,9 +6,11 @@
 
 </div>
 
+`bevy-rpg` is a plugin crate that adds dialog functionalities to Bevy, akin to those of JRPG games!
+
 # ✨ Features 
 - Create beautiful visual novels and RPG titles using the Bevy game engine we know and love!
-- `bevy-rpg` is made to be simple to the user (though complex inside) with not too many features.
+- `bevy_rpg` is made to be simple to the user (though complex inside) with not too many features.
 - Write code without too many boilerplate! The following code is very pretty right? 
 ```rs
    Dialog::start(

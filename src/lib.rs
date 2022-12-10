@@ -9,9 +9,9 @@ pub use dialog::Dialog;
 
 pub mod characters;
 
-pub struct DecoraPlugin;
+pub struct bevy_rpgPlugin;
 
-impl Plugin for DecoraPlugin {
+impl Plugin for bevy_rpgPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(ui::ui);
     }

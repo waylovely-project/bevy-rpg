@@ -1,17 +1,21 @@
-use decora::{characters::prelude::*, d, dialog::{ChooseDialogSettings, UseDialog}};
+use bevy_rpg::{
+    characters::prelude::*,
+    d,
+    dialog::{ChooseDialogSettings, UseDialog},
+};
 
 use bevy::{
     prelude::{App, EventWriter},
     DefaultPlugins,
 };
-use decora::{
+use bevy_rpg::{
+    bevy_rpgPlugin,
     dialog::{Dialog, DialogIncomingEvent},
-    DecoraPlugin,
 };
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugin(DecoraPlugin);
+    app.add_plugin(bevy_rpgPlugin);
     app.add_startup_system(start_dialog);
     app.run();
 }
