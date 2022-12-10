@@ -23,7 +23,7 @@ pub enum PossibleCharacter {
     Multi(MultipleCharacters),
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone, Default)]
 pub struct MultipleCharacters {
     pub chars: Vec<PossibleCharacter>,
     pub name: Option<Text>,

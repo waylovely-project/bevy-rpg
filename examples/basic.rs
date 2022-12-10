@@ -1,4 +1,4 @@
-use decora::characters::prelude::*;
+use decora::{characters::prelude::*, d, dialog::{ChooseDialogSettings, UseDialog}};
 
 use bevy::{
     prelude::{App, EventWriter},
@@ -22,10 +22,19 @@ pub fn start_dialog(dialog_event: EventWriter<DialogIncomingEvent>) {
     let everyone: PC = Multi::from("Everyone").into();
     Dialog::start(
         [
-            (&yuki, "Hiii haii haiii!"),
-            (&ayame, "Hii Yuki!"),
-            (&yuki, "How was your day?"),
-            (&everyone, "Great news!"),
+            d((&yuki, "Hiii haii haiii!")),
+            d((&ayame, "Hii Yuki!")),
+            d((&yuki, "How was your day?")),
+            d((&ayame, "Mine is pretty great! How about you?")),
+            d((&yuki, "Me too!")),
+            d((&everyone, "Yahuuu!!")),
+            d((
+                ["I like this example", "Great enough", "Not so much"],
+                ChooseDialogSettings {
+                    question: Some("Do you like this demo?"),
+                    use_dialog: UseDialog::None,
+                },
+            )),
         ]
         .into(),
         dialog_event,
