@@ -110,8 +110,25 @@ impl CharacterName for PossibleCharacter {
     }
 }
 
-    fn dialog_style(&self) -> Option<TextStyle> {
-        todo!()
+impl CharacterName for MultipleCharacters {
+    fn charname(&self) -> Option<Text> {
+        match &self.name {
+            Some(name) => Some(name.clone()),
+            None => {
+                let default = || Text::from_section("Noone", Default::default());
+                if self.chars.len() == 0 {
+                    Some(default())
+                } else {
+                    let mut sections = vec![];
+                    for char in &self.chars {
+                        let name = char.charname().unwrap_or_else(default);
+
+                        sections.extend(name.sections)
+                    }
+                    Some(Text::from_sections(sections))
+                }
+            }
+        }
     }
 }
 
