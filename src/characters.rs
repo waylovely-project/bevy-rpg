@@ -1,5 +1,9 @@
 use bevy::prelude::*;
-
+pub mod prelude {
+    pub use super::MultipleCharacters as Multi;
+    pub use super::PossibleCharacter as PC;
+    pub use super::SingleCharacter as Single;
+}
 pub trait Character {
     fn name(&self) -> Option<Text>;
     /// The dialog style of the character
@@ -13,12 +17,13 @@ pub trait Character {
 ///
 ///
 ///
+#[derive(Clone)]
 pub enum PossibleCharacter {
     Single(SingleCharacter),
     Multi(MultipleCharacters),
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MultipleCharacters {
     pub chars: Vec<PossibleCharacter>,
     pub name: Option<Text>,
@@ -51,8 +56,45 @@ impl Default for PossibleCharacter {
     }
 }
 
-pub struct SingleCharacter {}
+#[derive(Clone)]
+pub struct SingleCharacter {
+    pub name: Text,
+}
 
+impl<A> From<A> for SingleCharacter
+where
+    A: ToString,
+{
+    fn from(name: A) -> Self {
+        Self {
+            name: Text::from_section(name.to_string(), Default::default()),
+        }
+    }
+}
+
+impl<A> From<A> for MultipleCharacters
+where
+    A: ToString,
+{
+    fn from(name: A) -> Self {
+        Self {
+            name: Some(Text::from_section(name.to_string(), Default::default())),
+            chars: vec![],
+        }
+    }
+}
+
+impl From<SingleCharacter> for PossibleCharacter {
+    fn from(char: SingleCharacter) -> Self {
+        Self::Single(char)
+    }
+}
+
+impl From<MultipleCharacters> for PossibleCharacter {
+    fn from(chars: MultipleCharacters) -> Self {
+        Self::Multi(chars)
+    }
+}
 impl Character for SingleCharacter {
     fn name(&self) -> Option<Text> {
         todo!()
@@ -76,3 +118,8 @@ impl Character for PossibleCharacter {
     }
 }
 
+impl<A: Into<PossibleCharacter>> From<&A> for PossibleCharacter {
+    fn from(char: &A) -> Self {
+        char.clone().into()
+    }
+}
