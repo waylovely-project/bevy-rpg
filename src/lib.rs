@@ -1,17 +1,17 @@
 pub mod dialog;
 pub mod ui;
-use std::marker::PhantomData;
 
 use bevy::prelude::*;
 
-use characters::Character;
+pub use characters::Character;
 pub use dialog::Dialog;
+use dialog::DialogIncomingEvent;
 
 pub mod characters;
 
-pub struct bevy_rpgPlugin;
+pub struct RPGPlugin;
 
-impl Plugin for bevy_rpgPlugin {
+impl Plugin for RPGPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(ui::ui);
     }

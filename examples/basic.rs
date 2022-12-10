@@ -9,13 +9,13 @@ use bevy::{
     DefaultPlugins,
 };
 use bevy_rpg::{
-    bevy_rpgPlugin,
+    RPGPlugin,
     dialog::{Dialog, DialogIncomingEvent},
 };
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugin(bevy_rpgPlugin);
+    app.add_plugin(RPGPlugin);
     app.add_startup_system(start_dialog);
     app.run();
 }
