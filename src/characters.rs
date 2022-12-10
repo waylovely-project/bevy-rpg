@@ -4,8 +4,10 @@ pub mod prelude {
     pub use super::PossibleCharacter as PC;
     pub use super::SingleCharacter as Single;
 }
-pub trait Character {
-    fn name(&self) -> Option<Text>;
+pub trait Character
+where
+    Self: CharacterName,
+{
     /// The dialog style of the character
     ///
     /// For example: when the character Amia says "I wish we were friends from middle school". The text that says "I wish we were friends from middle school" can be written in a gold color and a handwriting font.
@@ -30,20 +32,13 @@ pub struct MultipleCharacters {
 }
 
 impl Character for MultipleCharacters {
-    ///
-    ///
-    /// it depends on how many, it trie
-    fn name(&self) -> Option<Text> {
-        todo!()
-    }
-
     fn dialog_style(&self) -> Option<TextStyle> {
         todo!()
     }
 }
 
 impl MultipleCharacters {
-    pub fn default_name(&self) -> String {
+    pub fn default_charname(&self) -> String {
         String::new()
     }
 }
@@ -95,31 +90,33 @@ impl From<MultipleCharacters> for PossibleCharacter {
         Self::Multi(chars)
     }
 }
-impl Character for SingleCharacter {
-    fn name(&self) -> Option<Text> {
-        todo!()
-    }
-
-    fn dialog_style(&self) -> Option<TextStyle> {
-        todo!()
-    }
-}
-
-impl Character for PossibleCharacter {
-    fn name(&self) -> Option<Text> {
-        match self {
-            PossibleCharacter::Single(char) => char.name(),
-            PossibleCharacter::Multi(chars) => chars.name(),
-        }
-    }
-
-    fn dialog_style(&self) -> Option<TextStyle> {
-        todo!()
-    }
-}
 
 impl<A: Into<PossibleCharacter>> From<&A> for PossibleCharacter {
     fn from(char: &A) -> Self {
         char.clone().into()
+    }
+}
+
+pub trait CharacterName {
+    fn charname(&self) -> Option<Text>;
+}
+
+impl CharacterName for PossibleCharacter {
+    fn charname(&self) -> Option<Text> {
+        match self {
+            PossibleCharacter::Single(char) => char.charname(),
+            PossibleCharacter::Multi(chars) => chars.charname(),
+        }
+    }
+}
+
+    fn dialog_style(&self) -> Option<TextStyle> {
+        todo!()
+    }
+}
+
+impl CharacterName for SingleCharacter {
+    fn charname(&self) -> Option<Text> {
+        Some(self.name.clone())
     }
 }
