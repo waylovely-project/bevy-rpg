@@ -14,6 +14,8 @@ pub struct RPGPlugin;
 impl Plugin for RPGPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_startup_system(ui::ui);
+        app.add_system(ui::update_dialog);
+        app.add_event::<DialogIncomingEvent>();
     }
 }
 /// With [d()]. You can easily create a dialog from many syntaxes!
