@@ -118,6 +118,7 @@ impl Dialogs {
         commands.insert_resource(DialogIter {
             dialogs: self.dialogs.clone(),
             current: 0,
+            current_char_step: 0
         })
     }
 }

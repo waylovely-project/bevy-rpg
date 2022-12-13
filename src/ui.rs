@@ -1,4 +1,8 @@
-use crate::characters::CharacterName;
+use std::ops::Range;
+use std::thread::sleep;
+use std::time::Duration;
+
+use crate::characters::{text_style, CharacterName};
 use crate::dialog::DialogIncomingEvent;
 use crate::Dialog;
 use bevy::{prelude::*, text};
@@ -7,6 +11,7 @@ use bevy::{prelude::*, text};
 pub struct DialogIter {
     pub dialogs: Vec<Dialog>,
     pub current: usize,
+    pub current_char_step: usize,
 }
 
 impl Iterator for DialogIter {
@@ -34,12 +39,19 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                 flex_direction: FlexDirection::Column,
                 position_type: PositionType::Absolute,
                 size: Size::new(Val::Percent(80.0), Val::Percent(20.0)),
-                justify_content: JustifyContent::Center,
+                justify_content: JustifyContent::FlexStart,
+                align_items: AlignItems::FlexStart,
+               padding: UiRect {
+                    left: Val::Percent(1.5),
+                    right: Val::Percent(1.0),
+                    top: Val::Percent(1.5),
+                    bottom: Val::Percent(1.0),
+                },
                 position: UiRect {
-                    right: Val::Percent(20.0),
+                    right: Val::Percent(10.0),
                     bottom: Val::Percent(10.0),
                     top: Val::Percent(70.0),
-                    left: Val::Percent(20.0),
+                    left: Val::Percent(10.0),
                 },
                 ..default()
             },
@@ -60,9 +72,10 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
 pub fn update_dialog(
     mut query: Query<(Entity, &mut Text)>,
     tree: Res<UITree>,
-    dialog: Res<DialogIter>,
+    mut dialog_iter: ResMut<DialogIter>,
 ) {
-    let dialog = &dialog.dialogs[dialog.current];
+    let dialog = &dialog_iter.dialogs[dialog_iter.current];
+
     for (id, mut text) in query.iter_mut() {
         if id == tree.character_box {
             match dialog {
@@ -75,9 +88,61 @@ pub fn update_dialog(
             };
         } else if id == tree.text_box {
             match dialog {
-                crate::Dialog::Text(dialog) => *text = dialog.text.clone(),
+                crate::Dialog::Text(dialog) => {
+                    *text = index_text(&dialog.text, dialog_iter.current_char_step)
+                    //*text = dialog.text.clone()
+                }
                 crate::Dialog::Choose(choose) => {}
             };
         }
+    }
+
+    dialog_iter.current_char_step += 1;
+
+    sleep(Duration::from_millis(60));
+}
+
+pub(crate) fn index_text(text: &Text, mut max: usize) -> Text {
+    let mut vec = vec![];
+    for section in &text.sections {
+        if section.value.len() < max {
+            max -= section.value.len();
+            vec.push(TextSection {
+                value: section.value.clone(),
+                style: text_style(&section.style),
+            });
+        } else {
+            vec.push(TextSection {
+                value: section.value[0..max].to_string(),
+                style: text_style(&section.style),
+            });
+        };
+    }
+
+    Text::from_sections(vec)
+}
+
+#[cfg(test)]
+mod test {
+
+    use bevy::text::{Text, TextSection};
+
+    use super::index_text;
+
+    #[test]
+    fn test_index() {
+        let text = Text::from_sections([
+            TextSection {
+                value: "Hiiiiii".to_string(),
+                ..Default::default()
+            },
+            TextSection {
+                value: "Fianaaaaa hiiiii".to_string(),
+                ..Default::default()
+            },
+        ]);
+        let index_text = index_text(&text, 10);
+        assert_eq!(index_text.sections[0].value, "Hiiiiii".to_string(),);
+        assert_eq!(index_text.sections[1].value, "Fia".to_string());
     }
 }
