@@ -5,6 +5,7 @@ use std::time::Duration;
 use crate::characters::{text_style, CharacterName};
 use crate::dialog::DialogIncomingEvent;
 use crate::Dialog;
+use bevy::ui::widget::ImageMode;
 use bevy::{prelude::*, text};
 
 #[derive(Resource)]
@@ -41,7 +42,7 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                 size: Size::new(Val::Percent(80.0), Val::Percent(20.0)),
                 justify_content: JustifyContent::FlexStart,
                 align_items: AlignItems::FlexStart,
-               padding: UiRect {
+                padding: UiRect {
                     left: Val::Percent(1.5),
                     right: Val::Percent(1.0),
                     top: Val::Percent(1.5),
@@ -62,7 +63,64 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
 
             text_box = Some(parent.spawn(TextBundle { ..default() }).id());
         });
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::Row,
+                position: UiRect {
+                    right: Val::Percent(0.0),
+                    top: Val::Px(15.0),
+                    ..default()
+                },
+        
+                position_type: PositionType::Absolute,
+                size: Size::new(Val::Auto, Val::Auto),
+                justify_content: JustifyContent::FlexEnd,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            ..default()
+        })
+        .with_children(|parent| {
+            //
+            let mut button = |image: Handle<Image>| {
+                parent
+                    .spawn(ButtonBundle {
+                        background_color: BackgroundColor(Color::PINK),
+                   
+                        style: Style {
+                            size: Size::new(Val::Px(50.0), Val::Px(50.0)),
+                            margin: UiRect::right(Val::Px(15.0)),
+                            padding: UiRect::all(Val::Px(10.0)),
+                            ..default()
+                        },
+                        ..default()
+                    }).with_children(|parent| {
+                        parent.spawn(ImageBundle {
+                            style: Style { size: Size::new(Val::Px(40.0), Val::Auto), ..default()}, 
+                             image: UiImage(image),
+                             ..default()
+                    });
+                } 
+            );
+            };
 
+            
+            button(server.load(
+                "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/media-skip-forward-symbolic.png",
+            ));
+            button(server.load(
+                "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/playback-speed-symbolic.png",
+            ));
+              button(server.load(
+                "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/eye-open-negative-filled-symbolic.png",
+            ));
+            button(server.load(
+                "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/view-more-symbolic.png",
+            ));
+
+            //
+        });
     commands.insert_resource(UITree {
         character_box: char_box.unwrap(),
         text_box: text_box.unwrap(),

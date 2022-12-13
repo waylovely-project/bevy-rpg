@@ -1,4 +1,3 @@
-
 use bevy_inspector_egui::widgets::InspectorQuery;
 use bevy_rpg::{
     characters::prelude::*,
@@ -16,14 +15,13 @@ type RootUINode = InspectorQuery<Entity, (With<Node>, Without<Parent>)>;
 
 fn main() {
     let mut app = App::new();
-    app.insert_resource(ClearColor(Color::rgb(53.0, 56.0, 57.0)));
+    app.insert_resource(ClearColor(Color::rgb(53.0, 56.0, 57.0)))
+        .add_plugins(DefaultPlugins)
+        .add_plugin(RPGPlugin)
+        .add_startup_system(start_dialog)
+        .add_plugin(bevy_inspector_egui::InspectorPlugin::<RootUINode>::new())
 
-    app.add_plugins(DefaultPlugins);
-    app.add_plugin(RPGPlugin);
-    app.add_startup_system(start_dialog);
-    app.add_plugin(bevy_inspector_egui::InspectorPlugin::<RootUINode>::new());
- 
-    app.run();
+        .run();
 }
 
 pub fn start_dialog(commands: Commands, font: Res<AssetServer>) {
