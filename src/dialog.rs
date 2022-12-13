@@ -1,9 +1,11 @@
-use std::{cell::RefCell, rc::Rc};
-
 use bevy::prelude::*;
 
-use crate::characters::{
-    Character, CharacterName, MultipleCharacters, PossibleCharacter, SingleCharacter,
+use crate::{
+    characters::{
+        text_style, CharacterName, CharacterStyle, MultipleCharacters, PossibleCharacter,
+        SingleCharacter,
+    },
+    ui::DialogIter,
 };
 
 #[derive(Clone)]
@@ -34,29 +36,27 @@ pub enum Dialog {
 #[derive(Clone, Eq, PartialEq)]
 pub struct WriteDialog {}
 pub struct DialogIncomingEvent(pub Dialog);
-impl Dialog {
-    pub fn start(dialogs: Dialogs, mut dialog_event: EventWriter<DialogIncomingEvent>) {
-        for dialog in dialogs.0 {
-            dialog_event.send(DialogIncomingEvent(dialog.clone()))
-        }
-    }
-}
+impl Dialog {}
 
 pub struct TextWrapper(Text);
 pub use TextWrapper as raw;
-impl<S> From<S> for TextWrapper
+impl<S> From<(S, TextStyle)> for TextWrapper
 where
     String: From<S>,
 {
-    fn from(str: S) -> Self {
-        Self(Text::from_section(str, Default::default()))
+    fn from((str, style): (S, TextStyle)) -> Self {
+        Self(Text::from_section(str, style))
     }
 }
-impl<C: Into<PossibleCharacter>, T: Into<TextWrapper>> From<(C, T)> for TextDialog {
+impl<C: Into<PossibleCharacter>, T> From<(C, T)> for TextDialog
+where
+    String: From<T>,
+{
     fn from((char, text): (C, T)) -> Self {
+        let char = char.into();
         Self {
-            char: char.into(),
-            text: text.into().0,
+            text: TextWrapper::from((text, text_style(char.text_style()))).0,
+            char,
         }
     }
 }
@@ -70,47 +70,58 @@ where
     }
 }
 
-pub struct Dialogs(Vec<Dialog>);
+pub struct Dialogs {
+    pub dialogs: Vec<Dialog>,
+    pub defaults: StyleDefaults,
+}
 
-impl<A: IntoIterator<Item = B>, B: Into<Dialog>> From<A> for Dialogs {
+pub struct StyleDefaults {
+    pub text: TextStyle,
+}
+
+impl Dialogs {
     ///
     /// This converts
     ///
-    /// Alongside just making Into<Dialog> into Dialog, this implementation also sets the UseDialogStatus of unresolved dialogs to the previous dialog if they want to.
-    fn from(dialogs: A) -> Self {
-        let dialogs: Vec<RefCell<Dialog>> = dialogs
-            .into_iter()
-            .map(|dialog| RefCell::new(dialog.into()))
-            .collect();
-        let mut iter = dialogs.iter();
-        for (pos, dialog) in iter.clone().enumerate() {
-            let mut dialog = dialog.borrow_mut();
-            use Dialog::*;
-            use UseDialogStatus::*;
-            match &mut *dialog {
-                Choose(choose) => match choose.dialog {
-                    Some(Unresolved(UseDialog::Previous)) => {
-                        choose.dialog = match iter.nth(pos - 1) {
-                            Some(dialog) => match &*dialog.borrow() {
-                                Text(text) => Some(Resolved(text.clone())),
-                                _ => None,
-                            },
-                            None => None,
-                        }
-                    }
-                    _ => {}
-                },
-                _ => {}
-            };
+    ///
+    pub fn add<A: IntoIterator<Item = B>, B: Into<Dialog>>(&mut self, dialogs: A) {
+        self.dialogs.extend(
+            dialogs
+                .into_iter()
+                .map(|dialog| dialog.into())
+                .collect::<Vec<Dialog>>(),
+        )
+    }
+
+    pub fn new(defaults: StyleDefaults) -> Self {
+        Self {
+            dialogs: vec![],
+            defaults,
         }
-        let mut dialogs_end = vec![];
-        for dialog in dialogs {
-            dialogs_end.push(dialog.into_inner())
-        }
-        Dialogs(dialogs_end)
+    }
+
+    pub fn single<B>(&self, name: B) -> SingleCharacter
+    where
+        (B, TextStyle, TextStyle): Into<SingleCharacter>,
+    {
+        (name, self.defaults.text.clone(), self.defaults.text.clone()).into()
+    }
+
+    pub fn multi<B>(&self, name: B) -> MultipleCharacters
+    where
+        (B, TextStyle, TextStyle): Into<MultipleCharacters>,
+    {
+        (name, self.defaults.text.clone(), self.defaults.text.clone()).into()
+    }
+
+    pub fn start(&mut self, mut commands: Commands) {
+        commands.insert_resource(DialogIter {
+            dialogs: self.dialogs.clone(),
+            current: 0,
+        })
     }
 }
-pub enum Input<A: Into<TextWrapper>, B: IntoIterator<Item = A>> {
+pub enum Input<A, B: IntoIterator<Item = A>> {
     Choose(B, UseDialog),
     Write(Text),
 }
@@ -133,18 +144,28 @@ impl Default for UseDialog {
 }
 
 #[derive(Default)]
-pub struct ChooseDialogSettings<A: Into<TextWrapper>> {
+pub struct ChooseDialogSettings<A>
+where
+    (A, TextStyle): Into<TextWrapper>,
+{
     pub question: Option<A>,
     pub use_dialog: UseDialog,
 }
 
-impl<A: Into<TextWrapper>, B: IntoIterator<Item = A>> From<(B, ChooseDialogSettings<A>)>
-    for ChooseDialog
+impl<A, B: IntoIterator<Item = A>, C> From<(B, ChooseDialogSettings<C>, TextStyle)> for ChooseDialog
+where
+    (A, TextStyle): Into<TextWrapper>,
+    String: From<A> + From<C>,
 {
-    fn from((answers, settings): (B, ChooseDialogSettings<A>)) -> Self {
+    fn from((answers, settings, text_style): (B, ChooseDialogSettings<C>, TextStyle)) -> Self {
         Self {
-            answers: answers.into_iter().map(|answer| answer.into().0).collect(),
-            question: settings.question.map(|text| text.into().0),
+            answers: answers
+                .into_iter()
+                .map(|answer| TextWrapper::from((answer, text_style.clone())).0)
+                .collect(),
+            question: settings
+                .question
+                .map(|text| TextWrapper::from((text, text_style.clone())).0),
             dialog: {
                 use UseDialog::*;
                 match settings.use_dialog {
@@ -157,10 +178,13 @@ impl<A: Into<TextWrapper>, B: IntoIterator<Item = A>> From<(B, ChooseDialogSetti
     }
 }
 
-impl<A: Into<TextWrapper>, B: IntoIterator<Item = A>> From<(B, ChooseDialogSettings<A>)>
-    for Dialog
+impl<A, B: IntoIterator<Item = A>, C> From<(B, ChooseDialogSettings<C>, TextStyle)> for Dialog
+where
+    (A, TextStyle): Into<TextWrapper>,
+    (C, TextStyle): Into<TextWrapper>,
+    String: From<A> + From<C>,
 {
-    fn from(input: (B, ChooseDialogSettings<A>)) -> Self {
+    fn from(input: (B, ChooseDialogSettings<C>, TextStyle)) -> Self {
         Dialog::Choose(input.into())
     }
 }

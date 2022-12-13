@@ -1,12 +1,30 @@
 use crate::characters::CharacterName;
 use crate::dialog::DialogIncomingEvent;
-use bevy::prelude::*;
+use crate::Dialog;
+use bevy::{prelude::*, text};
+
+#[derive(Resource)]
+pub struct DialogIter {
+    pub dialogs: Vec<Dialog>,
+    pub current: usize,
+}
+
+impl Iterator for DialogIter {
+    type Item = Dialog;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+        self.current = current + 1;
+        Some(self.dialogs[current].clone())
+    }
+}
 #[derive(Resource)]
 pub struct UITree {
     pub character_box: Entity,
     pub text_box: Entity,
 }
-pub fn ui(mut commands: Commands) {
+pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
+    commands.spawn(Camera2dBundle::default());
     let mut char_box = None;
     let mut text_box = None;
     commands
@@ -14,7 +32,15 @@ pub fn ui(mut commands: Commands) {
             background_color: BackgroundColor(Color::PINK),
             style: Style {
                 flex_direction: FlexDirection::Column,
-
+                position_type: PositionType::Absolute,
+                size: Size::new(Val::Percent(80.0), Val::Percent(20.0)),
+                justify_content: JustifyContent::Center,
+                position: UiRect {
+                    right: Val::Percent(20.0),
+                    bottom: Val::Percent(10.0),
+                    top: Val::Percent(70.0),
+                    left: Val::Percent(20.0),
+                },
                 ..default()
             },
             ..default()
@@ -34,25 +60,24 @@ pub fn ui(mut commands: Commands) {
 pub fn update_dialog(
     mut query: Query<(Entity, &mut Text)>,
     tree: Res<UITree>,
-    mut event: EventReader<DialogIncomingEvent>,
+    dialog: Res<DialogIter>,
 ) {
-    for event in event.iter() {
-        for (id, mut text) in query.iter_mut() {
-            if id == tree.character_box {
-                match &event.0 {
-                    crate::Dialog::Text(dialog) => {
-                        *text = dialog
-                            .charname()
-                            .unwrap_or_else(|| Text::from_section("Unknown", Default::default()))
-                    }
-                    crate::Dialog::Choose(_) => todo!(),
-                };
-            } else if id == tree.text_box {
-                match &event.0 {
-                    crate::Dialog::Text(dialog) => *text = dialog.text.clone(),
-                    crate::Dialog::Choose(_) => todo!(),
-                };
-            }
+    let dialog = &dialog.dialogs[dialog.current];
+    for (id, mut text) in query.iter_mut() {
+        if id == tree.character_box {
+            match dialog {
+                crate::Dialog::Text(dialog) => {
+                    *text = dialog
+                        .charname()
+                        .unwrap_or_else(|| Text::from_section("Unknown", Default::default()))
+                }
+                crate::Dialog::Choose(choose) => {}
+            };
+        } else if id == tree.text_box {
+            match dialog {
+                crate::Dialog::Text(dialog) => *text = dialog.text.clone(),
+                crate::Dialog::Choose(choose) => {}
+            };
         }
     }
 }
