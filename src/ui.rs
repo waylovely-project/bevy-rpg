@@ -124,7 +124,7 @@ pub fn update_dialog(
     if dialog_iter.dialogs.len() == 0 { return; }
     let dialog = &dialog_iter.dialogs[dialog_iter.current];
     {
-    let (_, mut char_text) = query.iter_mut().find(|( name, _)| name.as_str() == "character_box").unwrap();
+    let (_, mut char_text) = query.iter_mut().find(|( name, _)| name.as_str() == "character-box").unwrap();
    
     match dialog {
         Dialog::Text(dialog) => {
