@@ -18,13 +18,13 @@ where
 ///
 ///
 ///
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PossibleCharacter {
     Single(SingleCharacter),
     Multi(MultipleCharacters),
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct MultipleCharacters {
     pub chars: Vec<PossibleCharacter>,
     pub name: Option<Text>,
@@ -47,7 +47,7 @@ impl Default for PossibleCharacter {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SingleCharacter {
     pub name: Text,
     pub text_style: TextStyle,

@@ -8,26 +8,26 @@ use crate::{
     ui::DialogIter,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TextDialog {
     pub char: PossibleCharacter,
     pub text: Text,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum UseDialogStatus {
     Resolved(TextDialog),
     Unresolved(UseDialog),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ChooseDialog {
     pub dialog: Option<UseDialogStatus>,
     pub answers: Vec<Text>,
     pub question: Option<Text>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Dialog {
     Text(TextDialog),
     Choose(ChooseDialog),
@@ -70,11 +70,13 @@ where
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Dialogs {
     pub dialogs: Vec<Dialog>,
     pub defaults: StyleDefaults,
 }
 
+#[derive(Debug, Clone)]
 pub struct StyleDefaults {
     pub text: TextStyle,
 }
@@ -118,7 +120,7 @@ impl Dialogs {
         commands.insert_resource(DialogIter {
             dialogs: self.dialogs.clone(),
             current: 0,
-            current_char_step: 0
+            current_char_step: 0,
         })
     }
 }
@@ -131,7 +133,7 @@ pub enum BoxTitle {
     Untitled,
     Titled(Text),
 }
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum UseDialog {
     Previous,
     None,

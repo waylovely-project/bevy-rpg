@@ -9,5 +9,5 @@ edition = "2021"
 bevy = "0.9.1"
 
 [dev-dependencies]
-bevy = { version = "0.9.1", features = ["wayland"]}
+bevy = { version = "0.9.1", features = ["dynamic","wayland"]}
 bevy-inspector-egui = "0.14.0"

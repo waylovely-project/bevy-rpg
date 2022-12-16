@@ -4,18 +4,29 @@ pub mod ui;
 use bevy::prelude::*;
 
 pub use characters::Character;
-pub use dialog::Dialog;
 use dialog::DialogIncomingEvent;
+pub use dialog::{Dialog, Dialogs};
+use ui::{on_exit, ui, update_dialog, DialogIter};
 
 pub mod characters;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum ActiveState {
+    Inactive,
+    Active,
+}
 
 pub struct RPGPlugin;
 
 impl Plugin for RPGPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_startup_system(ui::ui);
-        app.add_system(ui::update_dialog);
-        app.add_event::<DialogIncomingEvent>();
+    fn build(&self, app: &mut App) {
+        app.add_state(ActiveState::Inactive);
+        app.init_resource::<DialogIter>();
+        app.add_system_set(SystemSet::on_enter(ActiveState::Active).with_system(ui));
+
+        app.add_system_set(SystemSet::on_update(ActiveState::Active).with_system(update_dialog));
+
+        app.add_system_set(SystemSet::on_exit(ActiveState::Active).with_system(on_exit));
     }
 }
 /// With [d()]. You can easily create a dialog from many syntaxes!

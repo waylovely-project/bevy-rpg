@@ -8,7 +8,7 @@ use crate::Dialog;
 use bevy::ui::widget::ImageMode;
 use bevy::{prelude::*, text};
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct DialogIter {
     pub dialogs: Vec<Dialog>,
     pub current: usize,
@@ -34,7 +34,7 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
     let mut char_box = None;
     let mut text_box = None;
     commands
-        .spawn(NodeBundle {
+        .spawn((NodeBundle {
             background_color: BackgroundColor(Color::PINK),
             style: Style {
                 flex_direction: FlexDirection::Column,
@@ -57,14 +57,14 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                 ..default()
             },
             ..default()
-        })
+        }, Name::new("dialog-box")))
         .with_children(|parent| {
             char_box = Some(parent.spawn(TextBundle { ..default() }).id());
 
             text_box = Some(parent.spawn(TextBundle { ..default() }).id());
         });
     commands
-        .spawn(NodeBundle {
+        .spawn((NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::Row,
                 position: UiRect {
@@ -80,7 +80,7 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                 ..default()
             },
             ..default()
-        })
+        },  Name::new("dialog-buttons")))
         .with_children(|parent| {
             //
             let mut button = |image: Handle<Image>| {
@@ -132,6 +132,7 @@ pub fn update_dialog(
     tree: Res<UITree>,
     mut dialog_iter: ResMut<DialogIter>,
 ) {
+    if dialog_iter.dialogs.len() == 0 { return; }
     let dialog = &dialog_iter.dialogs[dialog_iter.current];
 
     for (id, mut text) in query.iter_mut() {
@@ -158,6 +159,19 @@ pub fn update_dialog(
     dialog_iter.current_char_step += 1;
 
     sleep(Duration::from_millis(60));
+}
+
+
+pub fn on_exit(mut query: Query<(Entity, &Name)>, mut commands: Commands) {
+    commands
+        .entity(
+            query
+                .iter()
+                .find(|(_, name)| name.as_str() == "main-menu")
+                .unwrap()
+                .0,
+        )
+        .despawn_recursive();
 }
 
 pub(crate) fn index_text(text: &Text, mut max: usize) -> Text {
@@ -204,3 +218,5 @@ mod test {
         assert_eq!(index_text.sections[1].value, "Fia".to_string());
     }
 }
+
+
