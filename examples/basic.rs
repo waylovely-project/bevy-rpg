@@ -117,7 +117,7 @@ pub fn start_dialog(mut commands: Commands, font: Res<AssetServer>) {
         d((&yuki, "Hiii haii haiii!")),
         d((&ayame, "Hii Yuki!")),
         d((&yuki, "How was your day?")),
-        d((&ayame, "Mine is pretty great! How about you?")),
+        d((&ayame, "It was awesome! How about yours?")),
         d((&yuki, "Me too!")),
         d((&everyone, "Yahuuu!!")),
         d((
