@@ -1,5 +1,5 @@
 use crate::characters::{text_style, CharacterName};
-use crate::dialog::TextDialog;
+
 use crate::{ActiveState, Dialog};
 use bevy::prelude::*;
 
@@ -125,7 +125,7 @@ pub fn update_dialog(
     time: Res<Time>,
     mut state: ResMut<State<ActiveState>>,
 ) {
-    if dialog_iter.dialogs.len() == 0 {
+    if dialog_iter.dialogs.is_empty() {
         return;
     }
 
@@ -152,14 +152,12 @@ pub fn update_dialog(
         } else {
             return;
         }
-    } else {
-        if *interaction == Interaction::Clicked {
-            let dialog = &dialog_iter.dialogs[dialog_iter.current];
-            if let Dialog::Text(dialog) = dialog {
-                text = Some(dialog.text.clone());
-                dialog_iter.finished = true;
-                dialog_iter.timer.reset();
-            }
+    } else if *interaction == Interaction::Clicked {
+        let dialog = &dialog_iter.dialogs[dialog_iter.current];
+        if let Dialog::Text(dialog) = dialog {
+            text = Some(dialog.text.clone());
+            dialog_iter.finished = true;
+            dialog_iter.timer.reset();
         }
     }
     let dialog = &dialog_iter.dialogs[dialog_iter.current];

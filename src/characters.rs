@@ -121,10 +121,7 @@ impl From<&Self> for MultipleCharacters {
     fn from(chars: &Self) -> Self {
         Self {
             chars: chars.chars.iter().map(|char| char.into()).collect(),
-            name: match &chars.name {
-                Some(text) => Some(text_ptr_to_text(&text)),
-                None => None,
-            },
+            name: chars.name.as_ref().map(text_ptr_to_text),
             text_style: text_style(&chars.text_style),
         }
     }
@@ -156,7 +153,7 @@ impl CharacterName for MultipleCharacters {
             Some(name) => Some(name.clone()),
             None => {
                 let default = || Text::from_section("Noone", Default::default());
-                if self.chars.len() == 0 {
+                if self.chars.is_empty() {
                     Some(default())
                 } else {
                     let mut sections = vec![];
