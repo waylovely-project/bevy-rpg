@@ -7,10 +7,7 @@ use bevy_rpg::{
 };
 
 use bevy::{prelude::*, DefaultPlugins};
-use bevy_rpg::{
-    dialog::{Dialog, DialogIncomingEvent},
-    RPGPlugin,
-};
+use bevy_rpg::RPGPlugin;
 
 type RootUINode = InspectorQuery<Entity, (With<Node>, Without<Parent>)>;
 
@@ -100,7 +97,7 @@ fn on_exit(query: Query<(Entity, &Name)>, mut commands: Commands) {
         .despawn_recursive();
 }
 
-pub fn start_dialog(mut commands: Commands, font: Res<AssetServer>) {
+pub fn start_dialog(commands: Commands, font: Res<AssetServer>) {
     let text_style = TextStyle {
         font: font.load("NotoSans-Regular.ttf"),
         font_size: 24.0,
