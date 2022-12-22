@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
 use crate::{
@@ -121,6 +123,8 @@ impl Dialogs {
             dialogs: self.dialogs.clone(),
             current: 0,
             current_char_step: 0,
+            finished: false,
+            timer: Timer::new(Duration::from_millis(60), TimerMode::Once),
         })
     }
 }

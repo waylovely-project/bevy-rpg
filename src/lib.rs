@@ -4,7 +4,6 @@ pub mod ui;
 use bevy::prelude::*;
 
 pub use characters::Character;
-use dialog::DialogIncomingEvent;
 pub use dialog::{Dialog, Dialogs};
 use ui::{on_exit, ui, update_dialog, DialogIter};
 
