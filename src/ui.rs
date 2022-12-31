@@ -1,8 +1,30 @@
+use std::time::{Duration, Instant};
+
 use crate::characters::{text_style, CharacterName};
 
 use crate::{ActiveState, Dialog};
 use bevy::prelude::*;
 
+pub enum DialogBoxButtonBehavior {
+    ///
+    FinishWriting,
+    ///
+    SkipNextDialog,
+}
+
+impl Default for DialogBoxButtonBehavior {
+    fn default() -> Self {
+        Self::FinishWriting
+    }
+}
+#[derive(Deref, DerefMut)]
+pub struct DialogTimer(Timer);
+
+impl Default for DialogTimer {
+    fn default() -> Self {
+        Self(Timer::new(Duration::from_millis(6000), TimerMode::Once))
+    }
+}
 #[derive(Resource, Default)]
 pub struct DialogIter {
     pub dialogs: Vec<Dialog>,
@@ -11,6 +33,7 @@ pub struct DialogIter {
     /// The current dialog has finished and we can wait for the user to click to continue the next one
     pub finished: bool,
     pub timer: Timer,
+    pub dialog_box_button_behavior: DialogBoxButtonBehavior,
 }
 
 impl Iterator for DialogIter {
@@ -24,7 +47,6 @@ impl Iterator for DialogIter {
 }
 
 pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
     commands
         .spawn((
             ButtonBundle {
@@ -51,12 +73,12 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                 },
                 ..default()
             },
-            Name::new("dialog-box"),
+            DialogBox,
         ))
         .with_children(|parent| {
-            parent.spawn((TextBundle { ..default() }, Name::new("character-box")));
+            parent.spawn((TextBundle { ..default() }, CharText));
 
-            parent.spawn((TextBundle { ..default() }, Name::new("text-box")));
+            parent.spawn((TextBundle { ..default() }, DialogText));
         });
     commands
         .spawn((NodeBundle {
@@ -75,7 +97,7 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                 ..default()
             },
             ..default()
-        },  Name::new("dialog-buttons")))
+        },  DialogMenu))
         .with_children(|parent| {
             //
             let mut button = |image: Handle<Image>| {
@@ -119,17 +141,26 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
 }
 
 pub fn update_dialog(
-    mut query: Query<(&Name, &mut Text)>,
-    button: Query<(&Name, &Interaction)>,
+    mut char_text: Query<&mut Text, With<CharText>>,
+    mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
+
     mut dialog_iter: ResMut<DialogIter>,
     time: Res<Time>,
     mut state: ResMut<State<ActiveState>>,
+    interaction: Query<&Interaction, With<DialogBox>>,
 ) {
+    if !dialog_iter.timer.finished() && !dialog_iter.timer.paused() && dialog_iter.current_char_step > 0 {
+    dialog_iter
+        .timer
+        .tick(time.delta() /*+ Instant::now().duration_since(time.last_update().unwrap())*/);
+    }
     if dialog_iter.dialogs.is_empty() {
         return;
     }
-
-    dialog_iter.timer.tick(time.delta());
+    if dialog_iter.dialogs.len() <= dialog_iter.current {
+        state.set(ActiveState::Inactive).unwrap();
+        return;
+    }
 
     if dialog_iter.timer.finished() {
         println!("finished timer");
@@ -137,57 +168,63 @@ pub fn update_dialog(
         dialog_iter.timer.reset();
     }
 
-    let (_, interaction) = button
-        .iter()
-        .find(|(name, _)| name.as_str() == "dialog-box")
-        .unwrap();
+    let interaction = interaction.single();
     let mut text = None;
-    if dialog_iter.finished {
-        println!("dialog_iter finished");
-        if *interaction == Interaction::Clicked {
-            dialog_iter.current += 1;
 
-            dialog_iter.current_char_step = 0;
-            dialog_iter.timer.reset();
-        } else {
-            return;
-        }
-    } else if *interaction == Interaction::Clicked {
-        let dialog = &dialog_iter.dialogs[dialog_iter.current];
-        if let Dialog::Text(dialog) = dialog {
-            text = Some(dialog.text.clone());
-            dialog_iter.finished = true;
-            dialog_iter.timer.reset();
-        }
+    if *interaction == Interaction::Clicked {
+          dialog_iter.dialog_box_button_behavior = match dialog_iter.dialog_box_button_behavior {
+            DialogBoxButtonBehavior::FinishWriting => {
+                if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
+                    text = Some(dialog.text.clone());
+                    dialog_iter.finished = true;
+                    dialog_iter.timer.reset();
+                    dialog_iter.timer.pause();
+                }
+
+              DialogBoxButtonBehavior::SkipNextDialog
+            },
+            DialogBoxButtonBehavior::SkipNextDialog => {
+                dialog_iter.current += 1;
+
+                dialog_iter.current_char_step = 0;
+                dialog_iter.timer.reset();
+                if dialog_iter.timer.paused() {
+                    dialog_iter.timer.unpause();
+                }
+               DialogBoxButtonBehavior::FinishWriting
+            }
+        };
     }
+
     let dialog = &dialog_iter.dialogs[dialog_iter.current];
-    if text.is_none() {
-        if let Dialog::Text(dialog) = dialog {
-            let (indexed_text, finished) = index_text(&dialog.text, dialog_iter.current_char_step);
-            text = Some(indexed_text);
-            dialog_iter.finished = finished;
-        }
-    }
-    let (_, mut char_text) = query
-        .iter_mut()
-        .find(|(name, _)| name.as_str() == "character-box")
-        .unwrap();
-    let dialog = &dialog_iter.dialogs[dialog_iter.current];
-    match dialog {
+
+    match &dialog {
         Dialog::Text(dialog) => {
-            *char_text = dialog
+            *char_text.single_mut() = dialog
                 .charname()
                 .unwrap_or_else(|| Text::from_section("Unknown", Default::default()));
+
+            if text.is_none() {
+                if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
+                    let (indexed_text, finished) =
+                        index_text(&dialog.text, dialog_iter.current_char_step + 1);
+
+                    println!("{} {}", dialog_iter.current_char_step, dialog_iter.current);
+                    text = Some(indexed_text);
+                    dialog_iter.finished = finished;
+                    if finished {
+                        dialog_iter.dialog_box_button_behavior = DialogBoxButtonBehavior::SkipNextDialog;
+                    }
+                }
+            }
+
+            *dialog_text.single_mut() = text.clone().unwrap();
         }
         crate::Dialog::Choose(choose) => {
-            warn!("ChooseDialog support is not implemented yet: {choose:#?}");
+            warn!("ChooseDialog support fis not implemented yet: {choose:#?}");
         }
     };
 
-    let (_, mut text_text) = query
-        .iter_mut()
-        .find(|(name, _)| name.as_str() == "text-box")
-        .unwrap();
     if dialog_iter.dialogs.len() < dialog_iter.current {
         state.set(ActiveState::Inactive).unwrap();
         return;
@@ -196,42 +233,56 @@ pub fn update_dialog(
         warn!("Text is empty!");
         return;
     }
-    *text_text = text.unwrap();
 }
 
-pub fn on_exit(query: Query<(Entity, &Name)>, mut commands: Commands) {
-    for (entity, _) in query
-        .iter()
-        .filter(|(_, name)| name.as_str() == "dialog-box" || name.as_str() == "dialog-buttons")
-    {
-        commands.entity(entity).despawn_recursive();
-    }
+pub fn on_exit(
+    dialog_box: Query<Entity, With<DialogBox>>,
+    dialog_menu: Query<Entity, With<DialogMenu>>,
+    mut commands: Commands,
+) {
+    commands.entity(dialog_box.single()).despawn_recursive();
+    commands.entity(dialog_menu.single()).despawn_recursive();
 }
 
 pub(crate) fn index_text(text: &Text, mut max: usize) -> (Text, bool) {
-    let mut vec = vec![];
-    let mut finished = false;
-    for section in &text.sections {
+   /*let mut vec = vec![];
+    let mut len = 0;
+    for (nth, section) in text.sections.iter().enumerate() {
+
+   
         if section.value.len() < max {
             max -= section.value.len();
             vec.push(TextSection {
                 value: section.value.clone(),
                 style: text_style(&section.style),
             });
-            finished = true;
+          
         } else {
             vec.push(TextSection {
                 value: section.value[0..max].to_string(),
                 style: text_style(&section.style),
             });
 
-            finished = false;
+           
         };
     }
 
-    (Text::from_sections(vec), finished)
+    (Text::from_sections(vec), finished) */ 
+
+    todo!()
 }
 
+#[derive(Component)]
+///
+pub struct CharText;
+#[derive(Component)]
+/// Identifier for the
+pub struct DialogText;
+
+#[derive(Component)]
+pub struct DialogBox;
+#[derive(Component)]
+pub struct DialogMenu;
 #[cfg(test)]
 mod test {
 
@@ -251,8 +302,14 @@ mod test {
                 ..Default::default()
             },
         ]);
-        let index_text = index_text(&text, 10).0;
-        assert_eq!(index_text.sections[0].value, "Hiiiiii".to_string(),);
-        assert_eq!(index_text.sections[1].value, "Fia".to_string());
+        let (text, finished) = index_text(&text, 10);
+        assert_eq!(text.sections[0].value, "Hiiiiii".to_string(),);
+        assert_eq!(text.sections[1].value, "Fia".to_string());
+        assert_eq!(finished, false);
+        let text = index_text(&text, 1).0;
+        assert_eq!(text.sections[0].value, "H".to_string(),);
+        assert_eq!(finished, false);
+   
+
     }
 }

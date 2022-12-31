@@ -121,10 +121,8 @@ impl Dialogs {
     pub fn start(&mut self, mut commands: Commands) {
         commands.insert_resource(DialogIter {
             dialogs: self.dialogs.clone(),
-            current: 0,
-            current_char_step: 0,
-            finished: false,
-            timer: Timer::new(Duration::from_millis(60), TimerMode::Once),
+
+            ..default()
         })
     }
 }
