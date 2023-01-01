@@ -34,7 +34,7 @@ impl DrainedText {
                 len: len,
             };
         }
-        let char_vec: Type = char_vec.drain(0..max_len).collect();
+        let char_vec: Type = char_vec.drain(..max_len).collect();
         let mut map: BTreeMap<usize, TextSection> = BTreeMap::new();
         for (char, nth, style) in char_vec {
             if map.contains_key(&nth) {
