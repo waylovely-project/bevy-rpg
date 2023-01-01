@@ -1,5 +1,5 @@
-pub mod text;
 pub mod dialog;
+pub mod text;
 pub mod ui;
 
 use bevy::prelude::*;
