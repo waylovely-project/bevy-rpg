@@ -15,6 +15,7 @@ fn main() {
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::rgb(53.0, 56.0, 57.0)))
         .add_plugins(DefaultPlugins)
+        .add_startup_system(camera)
         .add_plugin(RPGPlugin)
         // We can't directly run a dialog on the first frame, since that'll emit StateAlreadyQueued error with Bevy.
         // So we would like to go to the main menu first
@@ -29,7 +30,7 @@ fn main() {
 }
 
 pub fn on_enter(mut commands: Commands, server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
+
     commands
         .spawn((
             NodeBundle {
@@ -128,4 +129,7 @@ pub fn start_dialog(commands: Commands, font: Res<AssetServer>) {
     ]);
 
     dialogs.start(commands);
+}
+pub fn camera(mut commands: Commands){
+        commands.spawn(Camera2dBundle::default());
 }

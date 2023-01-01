@@ -1,7 +1,9 @@
+
 use std::time::{Duration, Instant};
 
 use crate::characters::{text_style, CharacterName};
 
+use crate::text::DrainedText;
 use crate::{ActiveState, Dialog};
 use bevy::prelude::*;
 
@@ -32,7 +34,7 @@ pub struct DialogIter {
     pub current_char_step: usize,
     /// The current dialog has finished and we can wait for the user to click to continue the next one
     pub finished: bool,
-    pub timer: Timer,
+  //  pub timer: DialogTimer,
     pub dialog_box_button_behavior: DialogBoxButtonBehavior,
 }
 
@@ -145,15 +147,11 @@ pub fn update_dialog(
     mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
 
     mut dialog_iter: ResMut<DialogIter>,
-    time: Res<Time>,
+ 
     mut state: ResMut<State<ActiveState>>,
     interaction: Query<&Interaction, With<DialogBox>>,
 ) {
-    if !dialog_iter.timer.finished() && !dialog_iter.timer.paused() && dialog_iter.current_char_step > 0 {
-    dialog_iter
-        .timer
-        .tick(time.delta() /*+ Instant::now().duration_since(time.last_update().unwrap())*/);
-    }
+
     if dialog_iter.dialogs.is_empty() {
         return;
     }
@@ -162,12 +160,12 @@ pub fn update_dialog(
         return;
     }
 
-    if dialog_iter.timer.finished() {
+ /*    if dialog_iter.timer.finished() {
         println!("finished timer");
         dialog_iter.current_char_step += 1;
         dialog_iter.timer.reset();
     }
-
+*/
     let interaction = interaction.single();
     let mut text = None;
 
@@ -175,10 +173,12 @@ pub fn update_dialog(
           dialog_iter.dialog_box_button_behavior = match dialog_iter.dialog_box_button_behavior {
             DialogBoxButtonBehavior::FinishWriting => {
                 if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
+                    let dialog = dialog.clone();
                     text = Some(dialog.text.clone());
                     dialog_iter.finished = true;
-                    dialog_iter.timer.reset();
-                    dialog_iter.timer.pause();
+              //      dialog_iter.timer.reset();
+                //    dialog_iter.timer.pause();
+                    dialog_iter.current_char_step = DrainedText::i_just_want_the_length(&dialog.text) - 1;
                 }
 
               DialogBoxButtonBehavior::SkipNextDialog
@@ -187,10 +187,10 @@ pub fn update_dialog(
                 dialog_iter.current += 1;
 
                 dialog_iter.current_char_step = 0;
-                dialog_iter.timer.reset();
-                if dialog_iter.timer.paused() {
-                    dialog_iter.timer.unpause();
-                }
+         //       dialog_iter.timer.reset();
+           //     if dialog_iter.timer.paused() {
+            //       dialog_iter.timer.unpause();
+            //    }
                DialogBoxButtonBehavior::FinishWriting
             }
         };
@@ -206,16 +206,18 @@ pub fn update_dialog(
 
             if text.is_none() {
                 if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
-                    let (indexed_text, finished) =
-                        index_text(&dialog.text, dialog_iter.current_char_step + 1);
+                    let drained =
+                        DrainedText::drain_from(&dialog.text, dialog_iter.current_char_step + 1);
 
                     println!("{} {}", dialog_iter.current_char_step, dialog_iter.current);
-                    text = Some(indexed_text);
-                    dialog_iter.finished = finished;
-                    if finished {
+                    text = Some(drained.text);
+                    dialog_iter.finished = drained.len <= dialog_iter.current_char_step + 1;
+                    if dialog_iter.finished {
                         dialog_iter.dialog_box_button_behavior = DialogBoxButtonBehavior::SkipNextDialog;
                     }
                 }
+            } else {
+                 println!("OUTSIDE: {} {}", dialog_iter.current_char_step, dialog_iter.current);
             }
 
             *dialog_text.single_mut() = text.clone().unwrap();
@@ -233,6 +235,7 @@ pub fn update_dialog(
         warn!("Text is empty!");
         return;
     }
+    
 }
 
 pub fn on_exit(
@@ -242,37 +245,7 @@ pub fn on_exit(
 ) {
     commands.entity(dialog_box.single()).despawn_recursive();
     commands.entity(dialog_menu.single()).despawn_recursive();
-}
-
-pub(crate) fn index_text(text: &Text, mut max: usize) -> (Text, bool) {
-   /*let mut vec = vec![];
-    let mut len = 0;
-    for (nth, section) in text.sections.iter().enumerate() {
-
-   
-        if section.value.len() < max {
-            max -= section.value.len();
-            vec.push(TextSection {
-                value: section.value.clone(),
-                style: text_style(&section.style),
-            });
-          
-        } else {
-            vec.push(TextSection {
-                value: section.value[0..max].to_string(),
-                style: text_style(&section.style),
-            });
-
-           
-        };
-    }
-
-    (Text::from_sections(vec), finished) */ 
-
-    todo!()
-}
-
-#[derive(Component)]
+}#[derive(Component)]
 ///
 pub struct CharText;
 #[derive(Component)]
@@ -283,33 +256,3 @@ pub struct DialogText;
 pub struct DialogBox;
 #[derive(Component)]
 pub struct DialogMenu;
-#[cfg(test)]
-mod test {
-
-    use bevy::text::{Text, TextSection};
-
-    use super::index_text;
-
-    #[test]
-    fn test_index() {
-        let text = Text::from_sections([
-            TextSection {
-                value: "Hiiiiii".to_string(),
-                ..Default::default()
-            },
-            TextSection {
-                value: "Fianaaaaa hiiiii".to_string(),
-                ..Default::default()
-            },
-        ]);
-        let (text, finished) = index_text(&text, 10);
-        assert_eq!(text.sections[0].value, "Hiiiiii".to_string(),);
-        assert_eq!(text.sections[1].value, "Fia".to_string());
-        assert_eq!(finished, false);
-        let text = index_text(&text, 1).0;
-        assert_eq!(text.sections[0].value, "H".to_string(),);
-        assert_eq!(finished, false);
-   
-
-    }
-}
