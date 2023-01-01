@@ -10,4 +10,4 @@ bevy = { version = "0.9.1", features = ["dynamic"] }
 
 [dev-dependencies]
 bevy = { version = "0.9.1", features = ["dynamic","wayland"]}
-bevy-inspector-egui = "0.14.0"
+bevy-inspector-egui = "0.16.0-pre.2"

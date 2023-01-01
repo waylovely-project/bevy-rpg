@@ -1,15 +1,15 @@
-use bevy_inspector_egui::widgets::InspectorQuery;
+use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
+
 use bevy_rpg::{
     characters::prelude::*,
     d,
     dialog::{ChooseDialogSettings, Dialogs, StyleDefaults, UseDialog},
+    ui::DialogIter,
     ActiveState,
 };
 
 use bevy::{prelude::*, DefaultPlugins};
 use bevy_rpg::RPGPlugin;
-
-type RootUINode = InspectorQuery<Entity, (With<Node>, Without<Parent>)>;
 
 fn main() {
     let mut app = App::new();
@@ -25,12 +25,11 @@ fn main() {
         .add_system_set(SystemSet::on_update(ActiveState::Inactive).with_system(on_update))
         .add_system_set(SystemSet::on_exit(ActiveState::Inactive).with_system(on_exit))
         .add_system_set(SystemSet::on_enter(ActiveState::Active).with_system(start_dialog))
-        .add_plugin(bevy_inspector_egui::InspectorPlugin::<RootUINode>::new())
+        .add_plugin(WorldInspectorPlugin)
         .run();
 }
 
 pub fn on_enter(mut commands: Commands, server: Res<AssetServer>) {
-
     commands
         .spawn((
             NodeBundle {
@@ -130,6 +129,6 @@ pub fn start_dialog(commands: Commands, font: Res<AssetServer>) {
 
     dialogs.start(commands);
 }
-pub fn camera(mut commands: Commands){
-        commands.spawn(Camera2dBundle::default());
+pub fn camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
 }
