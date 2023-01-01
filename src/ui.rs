@@ -1,4 +1,3 @@
-
 use std::time::{Duration, Instant};
 
 use crate::characters::{text_style, CharacterName};
@@ -24,7 +23,7 @@ pub struct DialogTimer(Timer);
 
 impl Default for DialogTimer {
     fn default() -> Self {
-        Self(Timer::new(Duration::from_millis(6000), TimerMode::Once))
+        Self(Timer::new(Duration::from_millis(60), TimerMode::Once))
     }
 }
 #[derive(Resource, Default)]
@@ -34,7 +33,7 @@ pub struct DialogIter {
     pub current_char_step: usize,
     /// The current dialog has finished and we can wait for the user to click to continue the next one
     pub finished: bool,
-  //  pub timer: DialogTimer,
+    pub timer: DialogTimer,
     pub dialog_box_button_behavior: DialogBoxButtonBehavior,
 }
 
@@ -140,18 +139,67 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
 
             //
         });
-}
+} /*
+  pub fn update_dialog(
+      mut char_text: Query<&mut Text, With<CharText>>,
+      mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
+
+      mut dialog_iter: ResMut<DialogIter>,
+      mut state: ResMut<State<ActiveState>>,
+      interaction: Query<&Interaction, (With<DialogBox>, Changed<Interaction>)>,
+  ) {
+      if dialog_iter.dialogs.is_empty() {
+          return;
+      }
+
+      if let Ok(interaction) = interaction.get_single() {
+          if *interaction == Interaction::Clicked {
+              dialog_iter.current += 1;
+
+              dialog_iter.current_char_step = 0;
+          }
+      }
+      if dialog_iter.dialogs.len() <= dialog_iter.current {
+          state.set(ActiveState::Inactive).unwrap();
+          return;
+      }
+      match &dialog_iter.dialogs[dialog_iter.current] {
+          Dialog::Text(dialog) => {
+              *char_text.single_mut() = dialog
+                  .charname()
+                  .unwrap_or_else(|| Text::from_section("Unknown", Default::default()));
+
+              let dialog = dialog.clone();
+              let text = Some(dialog.text.clone());
+              dialog_iter.finished = true;
+
+              dialog_iter.current_char_step = DrainedText::i_just_want_the_length(&dialog.text) - 1;
+              println!("{} {}", dialog_iter.current_char_step, dialog_iter.current);
+
+              dialog_iter.finished = true;
+
+              *dialog_text.single_mut() = text.clone().unwrap();
+          }
+          crate::Dialog::Choose(choose) => {
+              warn!("ChooseDialog support fis not implemented yet: {choose:#?}");
+          }
+      };
+  }*/
 
 pub fn update_dialog(
     mut char_text: Query<&mut Text, With<CharText>>,
     mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
 
     mut dialog_iter: ResMut<DialogIter>,
- 
+    time: Res<Time>,
     mut state: ResMut<State<ActiveState>>,
-    interaction: Query<&Interaction, With<DialogBox>>,
+    interaction: Query<&Interaction, (Changed<Interaction>, With<DialogBox>)>,
 ) {
-
+ 
+    dialog_iter.timer.tick(
+            time.delta(), /*+ Instant::now().duration_since(time.last_update().unwrap())*/
+    );
+    
     if dialog_iter.dialogs.is_empty() {
         return;
     }
@@ -160,42 +208,43 @@ pub fn update_dialog(
         return;
     }
 
- /*    if dialog_iter.timer.finished() {
+    if dialog_iter.timer.finished() {
         println!("finished timer");
         dialog_iter.current_char_step += 1;
         dialog_iter.timer.reset();
     }
-*/
-    let interaction = interaction.single();
+
     let mut text = None;
 
-    if *interaction == Interaction::Clicked {
-          dialog_iter.dialog_box_button_behavior = match dialog_iter.dialog_box_button_behavior {
-            DialogBoxButtonBehavior::FinishWriting => {
-                if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
-                    let dialog = dialog.clone();
-                    text = Some(dialog.text.clone());
-                    dialog_iter.finished = true;
-              //      dialog_iter.timer.reset();
-                //    dialog_iter.timer.pause();
-                    dialog_iter.current_char_step = DrainedText::i_just_want_the_length(&dialog.text) - 1;
+    if let Ok(interaction) = interaction.get_single() {
+        if *interaction == Interaction::Clicked {
+            dialog_iter.dialog_box_button_behavior = match dialog_iter.dialog_box_button_behavior {
+                DialogBoxButtonBehavior::FinishWriting => {
+                    if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
+                        let dialog = dialog.clone();
+                        text = Some(dialog.text.clone());
+                        dialog_iter.finished = true;
+                        dialog_iter.timer.reset();
+                        dialog_iter.timer.pause();
+                        dialog_iter.current_char_step =
+                            DrainedText::i_just_want_the_length(&dialog.text) - 1;
+                    }
+
+                    DialogBoxButtonBehavior::SkipNextDialog
                 }
+                DialogBoxButtonBehavior::SkipNextDialog => {
+                    dialog_iter.current += 1;
 
-              DialogBoxButtonBehavior::SkipNextDialog
-            },
-            DialogBoxButtonBehavior::SkipNextDialog => {
-                dialog_iter.current += 1;
-
-                dialog_iter.current_char_step = 0;
-         //       dialog_iter.timer.reset();
-           //     if dialog_iter.timer.paused() {
-            //       dialog_iter.timer.unpause();
-            //    }
-               DialogBoxButtonBehavior::FinishWriting
-            }
-        };
+                    dialog_iter.current_char_step = 0;
+                    dialog_iter.timer.reset();
+                    if dialog_iter.timer.paused() {
+                        dialog_iter.timer.unpause();
+                    }
+                    DialogBoxButtonBehavior::FinishWriting
+                }
+            };
+        }
     }
-
     let dialog = &dialog_iter.dialogs[dialog_iter.current];
 
     match &dialog {
@@ -213,11 +262,15 @@ pub fn update_dialog(
                     text = Some(drained.text);
                     dialog_iter.finished = drained.len <= dialog_iter.current_char_step + 1;
                     if dialog_iter.finished {
-                        dialog_iter.dialog_box_button_behavior = DialogBoxButtonBehavior::SkipNextDialog;
+                        dialog_iter.dialog_box_button_behavior =
+                            DialogBoxButtonBehavior::SkipNextDialog;
                     }
                 }
             } else {
-                 println!("OUTSIDE: {} {}", dialog_iter.current_char_step, dialog_iter.current);
+                println!(
+                    "OUTSIDE: {} {}",
+                    dialog_iter.current_char_step, dialog_iter.current
+                );
             }
 
             *dialog_text.single_mut() = text.clone().unwrap();
@@ -235,9 +288,7 @@ pub fn update_dialog(
         warn!("Text is empty!");
         return;
     }
-    
 }
-
 pub fn on_exit(
     dialog_box: Query<Entity, With<DialogBox>>,
     dialog_menu: Query<Entity, With<DialogMenu>>,
@@ -245,7 +296,8 @@ pub fn on_exit(
 ) {
     commands.entity(dialog_box.single()).despawn_recursive();
     commands.entity(dialog_menu.single()).despawn_recursive();
-}#[derive(Component)]
+}
+#[derive(Component)]
 ///
 pub struct CharText;
 #[derive(Component)]
