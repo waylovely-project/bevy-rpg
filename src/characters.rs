@@ -6,7 +6,7 @@ pub mod prelude {
 }
 pub trait Character
 where
-    Self: CharacterName + CharacterStyle,
+    Self: CharacterName + HasTextStyle,
 {
     // The dialog style of the character
     //
@@ -175,22 +175,28 @@ impl CharacterName for SingleCharacter {
     }
 }
 
-pub trait CharacterStyle {
+pub trait HasTextStyle {
     fn text_style(&self) -> &TextStyle;
 }
-impl CharacterStyle for MultipleCharacters {
+impl HasTextStyle for MultipleCharacters {
     fn text_style(&self) -> &TextStyle {
         &self.text_style
     }
 }
 
-impl CharacterStyle for SingleCharacter {
+impl HasTextStyle for TextStyle {
+    fn text_style(&self) -> &TextStyle {
+        self
+    }
+}
+
+impl HasTextStyle for SingleCharacter {
     fn text_style(&self) -> &TextStyle {
         &self.text_style
     }
 }
 
-impl CharacterStyle for PossibleCharacter {
+impl HasTextStyle for PossibleCharacter {
     fn text_style(&self) -> &TextStyle {
         match self {
             Self::Single(c) => c.text_style(),
