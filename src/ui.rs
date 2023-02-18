@@ -1,6 +1,7 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use crate::characters::{text_style, CharacterName};
+use crate::characters::CharacterName;
+
 
 use crate::text::DrainedText;
 use crate::{ActiveState, Dialog};
@@ -101,7 +102,7 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
         },  DialogMenu))
         .with_children(|parent| {
             //
-            let mut button = |image: Handle<Image>| {
+            let mut button = |image:Option< Handle<Image>>| {
                 parent
                     .spawn(ButtonBundle {
                         background_color: BackgroundColor(Color::PINK),
@@ -116,7 +117,10 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
                     }).with_children(|parent| {
                         parent.spawn(ImageBundle {
                             style: Style { size: Size::new(Val::Px(40.0), Val::Auto), ..default()}, 
-                             image: UiImage(image),
+                             image: match image {
+                                Some(image) => UiImage(image),
+                                None => Default::default(),
+                            },
                              ..default()
                     });
                 } 
@@ -124,36 +128,36 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
             };
 
             
-            button(server.load(
+            button(Some(server.load(
                 "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/media-skip-forward-symbolic.png",
-            ));
-            button(server.load(
+            )));
+            button(Some(server.load(
                 "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/playback-speed-symbolic.png",
-            ));
-              button(server.load(
+            )));
+              button(Some(server.load(
                 "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/eye-open-negative-filled-symbolic.png",
-            ));
-            button(server.load(
+            )));
+            button(Some(server.load(
                 "plugins/com.github.project-flaura.bevy-rpg/icons/scalable/view-more-symbolic.png",
-            ));
+            )));
 
             //
         });
-          }
+} 
 pub fn update_dialog(
     mut char_text: Query<&mut Text, With<CharText>>,
     mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
 
     mut dialog_iter: ResMut<DialogIter>,
+    mut commands: Commands,
     time: Res<Time>,
     mut state: ResMut<State<ActiveState>>,
     interaction: Query<&Interaction, (Changed<Interaction>, With<DialogBox>)>,
 ) {
- 
     dialog_iter.timer.tick(
-            time.delta(), /*+ Instant::now().duration_since(time.last_update().unwrap())*/
+        time.delta(), /*+ Instant::now().duration_since(time.last_update().unwrap())*/
     );
-    
+
     if dialog_iter.dialogs.is_empty() {
         return;
     }
@@ -199,40 +203,64 @@ pub fn update_dialog(
             };
         }
     }
-    let dialog = &dialog_iter.dialogs[dialog_iter.current];
+    let dialog = dialog_iter.dialogs[dialog_iter.current.clone()].clone();
 
     match &dialog {
-        Dialog::Text(dialog) => {
-            *char_text.single_mut() = dialog
-                .charname()
-                .unwrap_or_else(|| Text::from_section("Unknown", Default::default()));
+        Dialog::Text(text_dialog)  => {
+          
+                *char_text.single_mut() = text_dialog
+                    .charname()
+                    .unwrap_or_else(|| Text::from_section("Unknown", Default::default()));
 
-            if text.is_none() {
-                if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
-                    let drained =
-                        DrainedText::drain_from(&dialog.text, dialog_iter.current_char_step + 1);
+                if text.is_none() {
+                    if let Dialog::Text(dialog) = &dialog_iter.dialogs[dialog_iter.current] {
+                        let drained = DrainedText::drain_from(
+                            &dialog.text,
+                            dialog_iter.current_char_step + 1,
+                        );
 
-                    println!("{} {}", dialog_iter.current_char_step, dialog_iter.current);
-                    text = Some(drained.text);
-                    dialog_iter.finished = drained.len <= dialog_iter.current_char_step + 1;
-                    if dialog_iter.finished {
-                        dialog_iter.dialog_box_button_behavior =
-                            DialogBoxButtonBehavior::SkipNextDialog;
+                        println!("{} {}", dialog_iter.current_char_step, dialog_iter.current);
+                        text = Some(drained.text);
+                        dialog_iter.finished = drained.len <= dialog_iter.current_char_step + 1;
+                        if dialog_iter.finished {
+                            dialog_iter.dialog_box_button_behavior =
+                                DialogBoxButtonBehavior::SkipNextDialog;
+                        }
                     }
+                } else {
+                    println!(
+                        "OUTSIDE: {} {}",
+                        dialog_iter.current_char_step, dialog_iter.current
+                    );
                 }
-            } else {
-                println!(
-                    "OUTSIDE: {} {}",
-                    dialog_iter.current_char_step, dialog_iter.current
-                );
-            }
 
-            *dialog_text.single_mut() = text.clone().unwrap();
+                *dialog_text.single_mut() = text.clone().unwrap();
+            
+
+          
         }
-        crate::Dialog::Choose(choose) => {
-            warn!("ChooseDialog support fis not implemented yet: {choose:#?}");
-        }
-    };
+        Dialog::Choose(choose_dialog) => {
+        
+                               commands
+                            .spawn(NodeBundle { ..default() })
+                            .with_children(|commands| {
+                                commands.spawn(NodeBundle { ..default() }).with_children(
+                                    |commands| {
+                                    if let Some(question) = &choose_dialog.question { commands.spawn(TextBundle { text: question.clone(), ..default()}); }
+                                     for (id, answer) in &choose_dialog.answers {
+            
+                                        commands.spawn((TextBundle {
+                                            text: answer.clone(),
+                                            ..default()
+                                        }, ChooserButtonId(id.clone())));
+                                    }
+                                    },
+                                );
+                            });
+                    
+                
+        },
+    }
 
     if dialog_iter.dialogs.len() < dialog_iter.current {
         state.set(ActiveState::Inactive).unwrap();
@@ -258,7 +286,16 @@ pub struct CharText;
 /// Identifier for the
 pub struct DialogText;
 
+
+#[derive(Component)]
+pub struct ChooserButtonId(String);
+
 #[derive(Component)]
 pub struct DialogBox;
 #[derive(Component)]
 pub struct DialogMenu;
+
+#[derive(Component)]
+pub enum ButtonId {
+    Auto,
+}
