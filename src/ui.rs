@@ -139,53 +139,7 @@ pub fn ui(mut commands: Commands, server: Res<AssetServer>) {
 
             //
         });
-} /*
-  pub fn update_dialog(
-      mut char_text: Query<&mut Text, With<CharText>>,
-      mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
-
-      mut dialog_iter: ResMut<DialogIter>,
-      mut state: ResMut<State<ActiveState>>,
-      interaction: Query<&Interaction, (With<DialogBox>, Changed<Interaction>)>,
-  ) {
-      if dialog_iter.dialogs.is_empty() {
-          return;
-      }
-
-      if let Ok(interaction) = interaction.get_single() {
-          if *interaction == Interaction::Clicked {
-              dialog_iter.current += 1;
-
-              dialog_iter.current_char_step = 0;
           }
-      }
-      if dialog_iter.dialogs.len() <= dialog_iter.current {
-          state.set(ActiveState::Inactive).unwrap();
-          return;
-      }
-      match &dialog_iter.dialogs[dialog_iter.current] {
-          Dialog::Text(dialog) => {
-              *char_text.single_mut() = dialog
-                  .charname()
-                  .unwrap_or_else(|| Text::from_section("Unknown", Default::default()));
-
-              let dialog = dialog.clone();
-              let text = Some(dialog.text.clone());
-              dialog_iter.finished = true;
-
-              dialog_iter.current_char_step = DrainedText::i_just_want_the_length(&dialog.text) - 1;
-              println!("{} {}", dialog_iter.current_char_step, dialog_iter.current);
-
-              dialog_iter.finished = true;
-
-              *dialog_text.single_mut() = text.clone().unwrap();
-          }
-          crate::Dialog::Choose(choose) => {
-              warn!("ChooseDialog support fis not implemented yet: {choose:#?}");
-          }
-      };
-  }*/
-
 pub fn update_dialog(
     mut char_text: Query<&mut Text, With<CharText>>,
     mut dialog_text: Query<&mut Text, (Without<CharText>, With<DialogText>)>,
