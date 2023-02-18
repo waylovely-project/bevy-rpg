@@ -1,10 +1,9 @@
-use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use bevy_rpg::{
     characters::prelude::*,
     d,
     dialog::{ChooseDialogSettings, Dialogs, StyleDefaults, UseDialog},
-
     ActiveState,
 };
 
@@ -118,12 +117,32 @@ pub fn start_dialog(commands: Commands, font: Res<AssetServer>) {
         d((&yuki, "Me too!")),
         d((&everyone, "Yahuuu!!")),
         d((
+            [
+                ("I like this example", "LIKED_THIS"),
+                ("Great enough", "GREAT_ENOUGH"),
+                ("Not so much", "NOT_SO_MUCH"),
+            ],
+            ChooseDialogSettings {
+                question: Some(Text::from_section(
+                    "Do you like this demo?",
+                    text_style.clone(),
+                )),
+                use_dialog: UseDialog::None,
+            },
+            text_style.clone(),
+        )),
+        d((
             ["I like this example", "Great enough", "Not so much"],
             ChooseDialogSettings {
-                question: Some("Do you like this demo?"),
+                question: Some(Text::from_section(
+                    "Do you like this demo?",
+                    text_style.clone(),
+                )),
                 use_dialog: UseDialog::None,
             },
             text_style,
+            // need this empty bracket () to prevent confusing trait conflicts
+            ()
         )),
     ]);
 

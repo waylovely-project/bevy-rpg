@@ -1,14 +1,16 @@
-use std::time::Duration;
+use std::any::Any;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
 
 use crate::{
     characters::{
-        text_style, CharacterName, CharacterStyle, MultipleCharacters, PossibleCharacter,
+        text_style, CharacterName, HasTextStyle, MultipleCharacters, PossibleCharacter,
         SingleCharacter,
     },
     ui::DialogIter,
 };
+
+use crate::dialog::wrapper::DialogText;
 
 #[derive(Debug, Clone)]
 pub struct TextDialog {
@@ -24,8 +26,8 @@ pub enum UseDialogStatus {
 
 #[derive(Debug, Clone)]
 pub struct ChooseDialog {
-    pub dialog: Option<UseDialogStatus>,
-    pub answers: Vec<Text>,
+    pub prev_dialog: Option<UseDialogStatus>,
+    pub answers: HashMap<String, Text>,
     pub question: Option<Text>,
 }
 
@@ -40,26 +42,15 @@ pub struct WriteDialog {}
 pub struct DialogIncomingEvent(pub Dialog);
 impl Dialog {}
 
-pub struct TextWrapper(Text);
-pub use TextWrapper as raw;
-impl<S> From<(S, TextStyle)> for TextWrapper
-where
-    String: From<S>,
-{
-    fn from((str, style): (S, TextStyle)) -> Self {
-        Self(Text::from_section(str, style))
-    }
-}
 impl<C: Into<PossibleCharacter>, T> From<(C, T)> for TextDialog
 where
-    String: From<T>,
+    (PossibleCharacter, T): Into<DialogText>,
 {
     fn from((char, text): (C, T)) -> Self {
         let char = char.into();
-        Self {
-            text: TextWrapper::from((text, text_style(char.text_style()))).0,
-            char,
-        }
+        let text: DialogText = (char.clone(), text).into();
+        let text: Text = (*text).clone();
+        Self { char, text }
     }
 }
 
@@ -149,29 +140,70 @@ impl Default for UseDialog {
 }
 
 #[derive(Default)]
-pub struct ChooseDialogSettings<A>
-where
-    (A, TextStyle): Into<TextWrapper>,
-{
-    pub question: Option<A>,
+pub struct ChooseDialogSettings {
+    pub question: Option<Text>,
     pub use_dialog: UseDialog,
 }
-
-impl<A, B: IntoIterator<Item = A>, C> From<(B, ChooseDialogSettings<C>, TextStyle)> for ChooseDialog
+impl<B: IntoIterator<Item = T>, T> From<(B, ChooseDialogSettings, TextStyle, ())> for Dialog
 where
-    (A, TextStyle): Into<TextWrapper>,
-    String: From<A> + From<C>,
+    T: ToString,
 {
-    fn from((answers, settings, text_style): (B, ChooseDialogSettings<C>, TextStyle)) -> Self {
+    fn from(value: (B, ChooseDialogSettings, TextStyle, ())) -> Self {
+        Dialog::Choose(value.into())
+    }
+}
+impl<B: IntoIterator<Item = T>, T> From<(B, ChooseDialogSettings, TextStyle, ())> for ChooseDialog
+where
+    T: ToString,
+{
+    fn from(value: (B, ChooseDialogSettings, TextStyle, ())) -> Self {
+        Self::from((
+            value
+                .0
+                .into_iter()
+                .map(|text| (text.to_string(), text.to_string())),
+            value.1,
+            value.2,
+        ))
+    }
+}
+impl<B: IntoIterator<Item = (T, Id)>, T, Id> From<(B, ChooseDialogSettings, TextStyle)>
+    for ChooseDialog
+where
+    Id: ToString,
+    T: ToString,
+{
+    fn from((answers, settings, style): (B, ChooseDialogSettings, TextStyle)) -> Self {
+        Self::from((
+            answers
+                .into_iter()
+                .map(|(answer, id)| (Text::from_section(answer.to_string(), style.clone()), id)),
+            settings,
+        ))
+    }
+}
+
+impl<B: IntoIterator<Item = (T, Id)>, T, Id> From<(B, ChooseDialogSettings, TextStyle)> for Dialog
+where
+    Id: ToString,
+    T: ToString,
+{
+    fn from(value: (B, ChooseDialogSettings, TextStyle)) -> Self {
+        Dialog::Choose(value.into())
+    }
+}
+impl<B: IntoIterator<Item = (Text, Id)>, Id> From<(B, ChooseDialogSettings)> for ChooseDialog
+where
+    Id: ToString,
+{
+    fn from((answers, settings): (B, ChooseDialogSettings)) -> Self {
         Self {
             answers: answers
                 .into_iter()
-                .map(|answer| TextWrapper::from((answer, text_style.clone())).0)
+                .map(|(answer, id)| (id.to_string(), answer))
                 .collect(),
-            question: settings
-                .question
-                .map(|text| TextWrapper::from((text, text_style.clone())).0),
-            dialog: {
+            question: settings.question.map(|text| text),
+            prev_dialog: {
                 use UseDialog::*;
                 match settings.use_dialog {
                     Previous => Some(UseDialogStatus::Unresolved(settings.use_dialog)),
@@ -183,13 +215,11 @@ where
     }
 }
 
-impl<A, B: IntoIterator<Item = A>, C> From<(B, ChooseDialogSettings<C>, TextStyle)> for Dialog
+impl<B: IntoIterator<Item = (Text, Id)>, Id> From<(B, ChooseDialogSettings)> for Dialog
 where
-    (A, TextStyle): Into<TextWrapper>,
-    (C, TextStyle): Into<TextWrapper>,
-    String: From<A> + From<C>,
+    Id: ToString,
 {
-    fn from(input: (B, ChooseDialogSettings<C>, TextStyle)) -> Self {
+    fn from(input: (B, ChooseDialogSettings)) -> Self {
         Dialog::Choose(input.into())
     }
 }
@@ -197,5 +227,45 @@ where
 impl CharacterName for TextDialog {
     fn charname(&self) -> Option<Text> {
         self.char.charname()
+    }
+}
+
+pub mod wrapper {
+
+    #[derive(Deref, DerefMut)]
+    pub struct DialogText(Text);
+
+    pub(crate) enum TextSource {
+        DefaultTextStyle,
+        /// Text
+        DirectlyFromText,
+    }
+
+    use bevy::{
+        prelude::{Deref, DerefMut},
+        text::{Text, TextStyle},
+    };
+
+    use crate::characters::HasTextStyle;
+
+    impl From<Text> for DialogText {
+        fn from(text: Text) -> Self {
+            Self(text)
+            //   source: TextSource::DirectlyFromText,
+        }
+    }
+    impl Into<Text> for DialogText {
+        fn into(self) -> Text {
+            self.0
+        }
+    }
+    impl<C: HasTextStyle, S: ToString> From<(C, S)> for DialogText {
+        fn from((char, text): (C, S)) -> Self {
+            Self(Text::from_section(
+                text.to_string(),
+                char.text_style().clone(),
+            ))
+            //   source: TextSource::DefaultTextStyle,
+        }
     }
 }

@@ -40,9 +40,13 @@ impl Plugin for RPGPlugin {
 /// d((
 ///     ["I like this example", "Great enough", "Not so much"],
 ///     ChooseDialogSettings {
-///              question: Some("Do you like this demo?"),
+///              question: Some(Text::from_section(
+///                 "Do you like this demo?",
+///                 text_style.clone(),
+///             )),
 ///              use_dialog: UseDialog::None,
 ///     },
+///     ()
 ///  ))
 /// ```
 pub fn d<A: Into<Dialog>>(dialog: A) -> Dialog {
