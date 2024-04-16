@@ -1,5 +1,5 @@
-Hello!
+Is... something missing?
+---
+Hello!! ^_^ Bevy RPG's development has been moved to Codeberg, and is now a part of the [Floral Bouquet](https://codeberg.org/waylovely-stories/floral-bouquet) suite of Bevy plugins as Floral Talk.
 
-Are you looking for the bevy-rpg library?
-
-It's now merged as `flara-talk` into the [FlaraVN](https://github.com/flaravn/flara) monorepo of visual novel engines built on top Bevy and Rust!
+![](https://gamedev.rs/news/041/bevy-rpg.png)
